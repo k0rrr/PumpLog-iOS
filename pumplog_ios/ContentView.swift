@@ -18,6 +18,7 @@ struct ContentView: View {
     @State private var exerciseWeight = ""
     @State private var exerciseReps = ""
     @State private var records : [WorkoutRecord] = []
+    @State private var showError = false
     var body: some View{
         VStack{
             Text("PumpLog")
@@ -25,17 +26,24 @@ struct ContentView: View {
             TextField("重量", text: $exerciseWeight)
             TextField("回数", text: $exerciseReps)
             Button("記録する"){
-                let newRecord = WorkoutRecord(
-                    name: exerciseName,
-                    weight:exerciseWeight,
-                    reps: exerciseReps
-                )
-                
-                records.append(newRecord)
-                
-                exerciseName = ""
-                exerciseWeight = ""
-                exerciseReps = ""
+                if exerciseName != "" && exerciseWeight != "" && exerciseReps != ""{
+                    let newRecord = WorkoutRecord(
+                        name: exerciseName,
+                        weight:exerciseWeight,
+                        reps: exerciseReps
+                    )
+                    records.append(newRecord)
+                    exerciseName = ""
+                    exerciseWeight = ""
+                    exerciseReps = ""
+                    showError = false
+                }else{
+                    showError = true
+                    
+                }
+            }
+            if showError {
+                Text("全て入力してください")
             }
             ForEach(records) { record in
                 Text("\(record.name)\(record.weight)kg×\(record.reps)回")
