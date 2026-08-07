@@ -7,17 +7,26 @@
 
 import SwiftUI
 
+
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
+    @State private var exerciseName = ""
+    @State private var exerciseWeight = ""
+    @State private var exerciseReps = ""
+    
+    var body: some View{
+        VStack{
             Text("PumpLog")
+            TextField("種目名", text: $exerciseName)
+            TextField("重量", text: $exerciseWeight)
+            TextField("回数", text: $exerciseReps)
+            Button("記録する"){
+                print(exerciseName,exerciseWeight,exerciseReps)
+            }
         }
-        .padding()
     }
 }
+
+        
 
 #Preview {
     ContentView()
