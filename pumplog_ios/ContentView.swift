@@ -14,15 +14,26 @@ struct WorkoutRecord : Identifiable {
     let reps : String
 }
 struct ContentView: View {
-    @State private var exerciseName = ""
+    @State private var exerciseName = "ベンチプレス"
     @State private var exerciseWeight = ""
     @State private var exerciseReps = ""
     @State private var records : [WorkoutRecord] = []
     @State private var showError = false
+    let exercises = [
+        "ベンチプレス",
+        "スクワット",
+        "デッドリフト"
+    ]
     var body: some View{
         VStack{
             Text("PumpLog")
-            TextField("種目名", text: $exerciseName)
+            //TextField("種目名", text: $exerciseName)
+            Picker("種目",selection: $exerciseName) {
+                ForEach(exercises, id:\.self){exercise in
+                    Text(exercise)
+                        .tag(exercise)
+                }
+            }
             TextField("重量", text: $exerciseWeight)
             TextField("回数", text: $exerciseReps)
             Button("記録する"){
@@ -33,7 +44,6 @@ struct ContentView: View {
                         reps: exerciseReps
                     )
                     records.append(newRecord)
-                    exerciseName = ""
                     exerciseWeight = ""
                     exerciseReps = ""
                     showError = false
@@ -42,6 +52,17 @@ struct ContentView: View {
                     
                 }
             }
+            Button("前回の記録を使う"){
+                let semeExerciseRecords = records.filter { record in
+                    record.name == exerciseName
+                }
+                if let lastRecord = semeExerciseRecords.last {
+                    exerciseWeight = lastRecord.weight
+                    exerciseReps = lastRecord.reps
+                    }
+            }
+        }
+            
             if showError {
                 Text("全て入力してください")
             }
@@ -52,7 +73,7 @@ struct ContentView: View {
             
         }
     }
-}
+
 
         
 
