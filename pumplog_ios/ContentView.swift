@@ -6,12 +6,15 @@
 //
 
 import SwiftUI
-
+struct WorkoutSet : Identifiable {
+    let id = UUID()
+    let weight: String
+    let reps: String
+}
 struct WorkoutRecord : Identifiable {
     let id = UUID()
     let name : String
-    let weight : String
-    let reps : String
+    var sets: [WorkoutSet]
 }
 struct ContentView: View {
     @State private var exerciseName = "ベンチプレス"
@@ -38,12 +41,21 @@ struct ContentView: View {
             TextField("回数", text: $exerciseReps)
             Button("記録する"){
                 if exerciseName != "" && exerciseWeight != "" && exerciseReps != ""{
-                    let newRecord = WorkoutRecord(
-                        name: exerciseName,
+                    let newSet = WorkoutSet(
                         weight:exerciseWeight,
                         reps: exerciseReps
                     )
-                    records.append(newRecord)
+                    if let index = records.firstIndex(where: {record in
+                        record.name == exerciseName
+                    }) {
+                        records[index].sets.append(newSet)
+                    }else {
+                        let newRecord = WorkoutRecord(
+                            name: exerciseName,
+                            sets: [newSet]
+                        )
+                        records.append(newRecord)
+                    }
                     exerciseWeight = ""
                     exerciseReps = ""
                     showError = false
@@ -53,27 +65,31 @@ struct ContentView: View {
                 }
             }
             Button("前回の記録を使う"){
-                let semeExerciseRecords = records.filter { record in
+                let sameExerciseRecords = records.filter { record in
                     record.name == exerciseName
                 }
-                if let lastRecord = semeExerciseRecords.last {
-                    exerciseWeight = lastRecord.weight
-                    exerciseReps = lastRecord.reps
+                if let lastRecord = sameExerciseRecords.last {
+                    if let lastSet = lastRecord.sets.last {
+                        exerciseWeight = lastSet.weight
+                        exerciseReps = lastSet.reps
                     }
+                }
             }
         }
-            
-            if showError {
-                Text("全て入力してください")
-            }
-            ForEach(records) { record in
-                Text("\(record.name)\(record.weight)kg×\(record.reps)回")
         
+        if showError {
+            Text("全て入力してください")
+        }
+        ForEach(records) { record in
+            Text(record.name)
+            ForEach(record.sets) { set in
+                Text("\(set.weight)kg×\(set.reps)回")
+                
             }
             
         }
     }
-
+}
 
         
 
