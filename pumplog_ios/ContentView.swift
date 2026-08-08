@@ -46,10 +46,7 @@ struct ContentView: View {
                     record.name == exerciseName
                 }
                 if let lastRecord = sameExerciseRecords.last {
-                    if let lastSet = lastRecord.sets.last {
-                        exerciseWeight = lastSet.weight
-                        exerciseReps = lastSet.reps
-                    }
+                    currentSets = lastRecord.sets
                 }
             }
             Button("セット追加"){
@@ -65,7 +62,12 @@ struct ContentView: View {
                 }
             }
             ForEach(Array(currentSets.enumerated()),id: \.element.id) { index,set in
-                Text("Set\(index+1) \(set.weight)kg×\(set.reps)回")
+                HStack{
+                    Text("Set\(index+1) \(set.weight)kg×\(set.reps)回")
+                    Button("削除"){
+                        currentSets.remove(at: index)
+                    }
+                }
             }
             Button("記録する"){
                 if exerciseName != "" && !currentSets.isEmpty{
