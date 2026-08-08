@@ -22,11 +22,13 @@ struct ContentView: View {
     @State private var exerciseReps = ""
     @State private var records : [WorkoutRecord] = []
     @State private var showError = false
+    @State private var currentSets: [WorkoutSet] = []
     let exercises = [
         "ベンチプレス",
         "スクワット",
         "デッドリフト"
     ]
+    
     var body: some View{
         VStack{
             Text("PumpLog")
@@ -39,31 +41,6 @@ struct ContentView: View {
             }
             TextField("重量", text: $exerciseWeight)
             TextField("回数", text: $exerciseReps)
-            Button("記録する"){
-                if exerciseName != "" && exerciseWeight != "" && exerciseReps != ""{
-                    let newSet = WorkoutSet(
-                        weight:exerciseWeight,
-                        reps: exerciseReps
-                    )
-                    if let index = records.firstIndex(where: {record in
-                        record.name == exerciseName
-                    }) {
-                        records[index].sets.append(newSet)
-                    }else {
-                        let newRecord = WorkoutRecord(
-                            name: exerciseName,
-                            sets: [newSet]
-                        )
-                        records.append(newRecord)
-                    }
-                    exerciseWeight = ""
-                    exerciseReps = ""
-                    showError = false
-                }else{
-                    showError = true
-                    
-                }
-            }
             Button("前回の記録を使う"){
                 let sameExerciseRecords = records.filter { record in
                     record.name == exerciseName
@@ -75,23 +52,55 @@ struct ContentView: View {
                     }
                 }
             }
-        }
-        
-        if showError {
-            Text("全て入力してください")
-        }
-        ForEach(records) { record in
-            Text(record.name)
-            ForEach(record.sets) { set in
-                Text("\(set.weight)kg×\(set.reps)回")
+            Button("セット追加"){
+                if exerciseWeight != "" && exerciseReps != ""{
+                    let newSet = WorkoutSet(
+                        weight: exerciseWeight,
+                        reps: exerciseReps
+                    )
+                    currentSets.append(newSet)
+                    exerciseWeight = ""
+                    exerciseReps = ""
+                    showError = false
+                }
+            }
+            ForEach(Array(currentSets.enumerated()),id: \.element.id) { index,set in
+                Text("Set\(index+1) \(set.weight)kg×\(set.reps)回")
+            }
+            Button("記録する"){
+                if exerciseName != "" && !currentSets.isEmpty{
+                    let newRecord = WorkoutRecord(
+                        name: exerciseName,
+                        sets: currentSets
+                    )
+                    records.append(newRecord)
+                    currentSets = []
+                    showError = false
+                }else{
+                    showError = true
+                    
+                }
+            }
+            
+            
+            
+            if showError {
+                Text("全て入力してください")
+            }
+            ForEach(records) { record in
+                Text(record.name)
+                ForEach(Array(record.sets.enumerated()),id:\.element.id) { index,set in
+                    Text("Set\(index + 1) \(set.weight)kg×\(set.reps)回")
+                    
+                }
                 
             }
+            
+            
             
         }
     }
 }
-
-        
 
 #Preview {
     ContentView()
