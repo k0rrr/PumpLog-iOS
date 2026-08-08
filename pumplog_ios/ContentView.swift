@@ -8,8 +8,8 @@
 import SwiftUI
 struct WorkoutSet : Identifiable {
     let id = UUID()
-    let weight: String
-    let reps: String
+    var weight: String
+    var reps: String
 }
 struct WorkoutRecord : Identifiable {
     let id = UUID()
@@ -63,7 +63,9 @@ struct ContentView: View {
             }
             ForEach(Array(currentSets.enumerated()),id: \.element.id) { index,set in
                 HStack{
-                    Text("Set\(index+1) \(set.weight)kg×\(set.reps)回")
+                    Text("Set\(index+1)")
+                    TextField("重量",text: $currentSets[index].weight)
+                    TextField("回数", text: $currentSets[index].reps)
                     Button("削除"){
                         currentSets.remove(at: index)
                     }
