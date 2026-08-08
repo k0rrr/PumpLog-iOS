@@ -6,12 +6,12 @@
 //
 
 import SwiftUI
-struct WorkoutSet : Identifiable {
+struct WorkoutSet : Identifiable, Codable {
     let id = UUID()
     var weight: String
     var reps: String
 }
-struct WorkoutRecord : Identifiable {
+struct WorkoutRecord : Identifiable, Codable {
     let id = UUID()
     let name : String
     var sets: [WorkoutSet]
@@ -78,6 +78,9 @@ struct ContentView: View {
                         sets: currentSets
                     )
                     records.append(newRecord)
+                    if let data = try? JSONEncoder().encode(records){
+                        UserDefaults.standard.set(data,forKey: "records")
+                    }
                     currentSets = []
                     showError = false
                 }else{
@@ -99,10 +102,19 @@ struct ContentView: View {
                 }
                 
             }
-            
-            
-            
         }
+        .onAppear{
+            if let data = UserDefaults.standard.data(forKey: "records"){
+                if let savedRecords = try? JSONDecoder().decode(
+                    [WorkoutRecord].self,
+                    from: data
+                ){
+                    records = savedRecords
+                }
+            }
+        }
+        
+        
     }
 }
 
