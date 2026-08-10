@@ -7,14 +7,28 @@
 
 import SwiftUI
 struct WorkoutSet : Identifiable, Codable {
-    let id = UUID()
+    let id : UUID
     var weight: String
     var reps: String
+    
+    init(id: UUID = UUID(), weight: String, reps: String) {
+        self.id = id
+        self.weight = weight
+        self.reps = reps
+    }
 }
 struct WorkoutRecord : Identifiable, Codable {
-    let id = UUID()
+    let id : UUID
     let name : String
+    let date: Date
     var sets: [WorkoutSet]
+    
+    init(id: UUID = UUID(), name: String, date: Date = Date(), sets: [WorkoutSet]) {
+        self.id = id
+        self.name = name
+        self.sets = sets
+        self.date = date
+    }
 }
 struct ContentView: View {
     @State private var exerciseName = "ベンチプレス"
@@ -95,6 +109,7 @@ struct ContentView: View {
                 Text("全て入力してください")
             }
             ForEach(records) { record in
+                Text(record.date, style: .date)
                 Text(record.name)
                 ForEach(Array(record.sets.enumerated()),id:\.element.id) { index,set in
                     Text("Set\(index + 1) \(set.weight)kg×\(set.reps)回")
