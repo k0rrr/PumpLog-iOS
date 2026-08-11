@@ -42,7 +42,11 @@ struct ContentView: View {
         "スクワット",
         "デッドリフト"
     ]
-    
+    var groupedRecords: [Date: [WorkoutRecord]]{
+        return Dictionary(grouping: records) { record in
+            Calendar.current.startOfDay(for: record.date)
+        }
+    }
     var body: some View{
         VStack{
             Text("PumpLog")
@@ -108,31 +112,50 @@ struct ContentView: View {
             if showError {
                 Text("全て入力してください")
             }
-            ForEach(records) { record in
-                Text(record.date, style: .date)
-                Text(record.name)
-                ForEach(Array(record.sets.enumerated()),id:\.element.id) { index,set in
-                    Text("Set\(index + 1) \(set.weight)kg×\(set.reps)回")
-                    
-                }
+            ForEach(groupedRecords.keys.sorted(by: >), id: \.self) { date in
+                Text(date, style: .date)
                 
+                if let dayRecords = groupedRecords[date] {
+                    ForEach(dayRecords) { record in
+                        VStack {
+                            HStack {
+                                Text(record.name)
+                                
+                                Button("削除") {
+                                    if let index = records.firstIndex(where: { item in
+                                        item.id == record.id
+                                    }) {
+                                        records.remove(at: index)
+                                        
+                                        if let data = try? JSONEncoder().encode(records) {
+                                            UserDefaults.standard.set(data, forKey: "records")
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            ForEach(Array(record.sets.enumerated()), id: \.element.id) { index, set in
+                                Text("Set\(index + 1) \(set.weight)kg×\(set.reps)回")
+                            }
+                        }
+                        
+                    }
+                }
             }
         }
-        .onAppear{
-            if let data = UserDefaults.standard.data(forKey: "records"){
+        
+        .onAppear {
+            if let data = UserDefaults.standard.data(forKey: "records") {
                 if let savedRecords = try? JSONDecoder().decode(
                     [WorkoutRecord].self,
                     from: data
-                ){
+                ) {
                     records = savedRecords
                 }
             }
         }
-        
-        
     }
 }
-
 #Preview {
     ContentView()
 }
