@@ -38,20 +38,23 @@ struct WorkoutSet: Identifiable, Codable, Equatable {
     var weight: Double
     var reps: Int
     var kind: SetKind
+    var isCompleted: Bool
 
-    init(id: UUID = UUID(), weight: Double, reps: Int, kind: SetKind = .working) {
+    init(id: UUID = UUID(), weight: Double, reps: Int, kind: SetKind = .working, isCompleted: Bool = false) {
         self.id = id
         self.weight = weight
         self.reps = reps
         self.kind = kind
+        self.isCompleted = isCompleted
     }
 
-    private enum CodingKeys: String, CodingKey { case id, weight, reps, kind }
+    private enum CodingKeys: String, CodingKey { case id, weight, reps, kind, isCompleted }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         kind = try container.decodeIfPresent(SetKind.self, forKey: .kind) ?? .working
+        isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
         if let value = try? container.decode(Double.self, forKey: .weight) {
             weight = value
         } else {
@@ -72,17 +75,19 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
     var date: Date
     var sets: [WorkoutSet]
     var note: String
+    var sessionID: UUID?
 
-    init(id: UUID = UUID(), exerciseID: UUID?, exerciseName: String, date: Date = Date(), sets: [WorkoutSet], note: String = "") {
+    init(id: UUID = UUID(), exerciseID: UUID?, exerciseName: String, date: Date = Date(), sets: [WorkoutSet], note: String = "", sessionID: UUID? = nil) {
         self.id = id
         self.exerciseID = exerciseID
         self.exerciseName = exerciseName
         self.date = date
         self.sets = sets
         self.note = note
+        self.sessionID = sessionID
     }
 
-    private enum CodingKeys: String, CodingKey { case id, exerciseID, exerciseName, name, date, sets, note }
+    private enum CodingKeys: String, CodingKey { case id, exerciseID, exerciseName, name, date, sets, note, sessionID }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -93,6 +98,7 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
         date = try container.decodeIfPresent(Date.self, forKey: .date) ?? Date()
         sets = try container.decode([WorkoutSet].self, forKey: .sets)
         note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+        sessionID = try container.decodeIfPresent(UUID.self, forKey: .sessionID)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -103,12 +109,48 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
         try container.encode(date, forKey: .date)
         try container.encode(sets, forKey: .sets)
         try container.encode(note, forKey: .note)
+        try container.encodeIfPresent(sessionID, forKey: .sessionID)
+    }
+}
+
+struct SessionExerciseDraft: Identifiable, Codable, Equatable {
+    let id: UUID
+    var exerciseID: UUID
+    var sets: [WorkoutSet] = []
+    var note = ""
+
+    init(id: UUID = UUID(), exerciseID: UUID, sets: [WorkoutSet] = [], note: String = "") {
+        self.id = id
+        self.exerciseID = exerciseID
+        self.sets = sets
+        self.note = note
     }
 }
 
 struct WorkoutDraft: Codable, Equatable {
-    var exerciseID: UUID?
+    var id = UUID()
     var date = Date()
-    var sets: [WorkoutSet] = []
-    var note = ""
+    var exercises: [SessionExerciseDraft] = []
+    var selectedEntryID: UUID?
+    var restEndsAt: Date?
+    var restDuration = 90
+}
+
+struct LegacyWorkoutDraft: Codable {
+    var exerciseID: UUID?
+    var date: Date
+    var sets: [WorkoutSet]
+    var note: String
+}
+
+struct WorkoutTemplate: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var exerciseIDs: [UUID]
+
+    init(id: UUID = UUID(), name: String, exerciseIDs: [UUID]) {
+        self.id = id
+        self.name = name
+        self.exerciseIDs = exerciseIDs
+    }
 }

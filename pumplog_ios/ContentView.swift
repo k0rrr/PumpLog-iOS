@@ -20,64 +20,112 @@ private struct RecordView: View {
     @State private var weight = ""
     @State private var reps = ""
     @State private var showValidationError = false
+    @State private var showingExercisePicker = false
+    @State private var showingTemplatePicker = false
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("トレーニング") {
-                    Picker("種目", selection: exerciseSelection) {
-                        ForEach(store.exercises) { exercise in
-                            Text(exercise.name).tag(Optional(exercise.id))
-                        }
-                    }
                     DatePicker("日時", selection: $store.draft.date)
-                }
-
-                Section("セットを追加") {
+                    if !store.draft.exercises.isEmpty {
+                        Picker("種目", selection: entrySelection) {
+                            ForEach(store.draft.exercises) { entry in
+                                Text(store.exercise(for: entry)?.name ?? "削除された種目")
+                                    .tag(Optional(entry.id))
+                            }
+                        }
+                    }
                     HStack {
-                        TextField("重量 (kg)", text: $weight).keyboardType(.decimalPad)
-                        TextField("回数", text: $reps).keyboardType(.numberPad)
-                        Button("追加", action: addSet).buttonStyle(.borderedProminent)
-                    }
-                    if store.draft.sets.isEmpty {
-                        Text("重量と回数を入力してセットを追加してください")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if !store.draft.sets.isEmpty {
-                    Section("セット") {
-                        ForEach(Array(store.draft.sets.indices), id: \.self) { index in
-                            SetEditorRow(
-                                number: index + 1,
-                                set: $store.draft.sets[index],
-                                onDuplicate: { store.duplicateSet(at: index) },
-                                onDelete: { store.draft.sets.remove(at: index) }
-                            )
-                        }
-                        Button("最後と同じセットを追加", systemImage: "plus.square.on.square") {
-                            store.duplicateLastSet()
+                        Button("種目を追加", systemImage: "plus") { showingExercisePicker = true }
+                        Spacer()
+                        if store.selectedEntry != nil {
+                            Button("種目を外す", systemImage: "minus.circle", role: .destructive) {
+                                store.removeSelectedExercise()
+                            }
                         }
                     }
                 }
 
-                Section("メモ") {
-                    TextField("フォームや体調など", text: $store.draft.note, axis: .vertical)
+                if let entryIndex = store.selectedEntryIndex {
+                    Section("セットを追加") {
+                        HStack {
+                            TextField("重量 (kg)", text: $weight).keyboardType(.decimalPad)
+                            TextField("回数", text: $reps).keyboardType(.numberPad)
+                            Button("追加", action: addSet).buttonStyle(.borderedProminent)
+                        }
+                        if store.draft.exercises[entryIndex].sets.isEmpty {
+                            Text("重量と回数を入力してセットを追加してください")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if !store.draft.exercises[entryIndex].sets.isEmpty {
+                        Section("セット") {
+                            ForEach(Array(store.draft.exercises[entryIndex].sets.indices), id: \.self) { index in
+                                SetEditorRow(
+                                    number: index + 1,
+                                    set: $store.draft.exercises[entryIndex].sets[index],
+                                    onDuplicate: { store.duplicateSet(at: index) },
+                                    onDelete: { store.draft.exercises[entryIndex].sets.remove(at: index) },
+                                    onCompletionChange: { store.setCompletion(at: index, isCompleted: $0) }
+                                )
+                            }
+                            Button("最後と同じセットを追加", systemImage: "plus.square.on.square") {
+                                store.duplicateLastSet()
+                            }
+                        }
+                    }
+
+                    Section("種目メモ") {
+                        TextField(
+                            "フォームや体調など",
+                            text: $store.draft.exercises[entryIndex].note,
+                            axis: .vertical
+                        )
                         .lineLimit(2...5)
+                    }
                 }
+
                 Section {
-                    Button("記録を保存") {
-                        showValidationError = !store.saveDraftAsRecord()
+                    Button("トレーニングを完了") {
+                        showValidationError = !store.finishWorkout()
                     }
                     .frame(maxWidth: .infinity)
-                    .disabled(store.exercises.isEmpty)
+                    .disabled(store.draft.exercises.isEmpty)
                 }
             }
             .navigationTitle("PumpLog")
+            .safeAreaInset(edge: .bottom) {
+                if store.draft.restEndsAt != nil {
+                    RestTimerBanner(store: store)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button("テンプレートから開始", systemImage: "list.clipboard") {
+                            showingTemplatePicker = true
+                        }
+                        Button("前回のメニューを複製", systemImage: "arrow.clockwise") {
+                            store.repeatPreviousWorkout()
+                        }
+                        .disabled(!store.hasPreviousWorkout)
+                    } label: {
+                        Label("メニュー", systemImage: "ellipsis.circle")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingExercisePicker) {
+                WorkoutExercisePicker(store: store)
+            }
+            .sheet(isPresented: $showingTemplatePicker) {
+                TemplatePickerView(store: store)
+            }
             .alert("保存できません", isPresented: $showValidationError) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("種目を選び、1回以上の有効なセットを入力してください。")
+                Text("すべての種目に1回以上の有効なセットを入力してください。")
             }
             .overlay {
                 if store.exercises.isEmpty {
@@ -86,17 +134,26 @@ private struct RecordView: View {
                         systemImage: "dumbbell",
                         description: Text("「種目」タブで種目を追加してください。")
                     )
+                } else if store.draft.exercises.isEmpty {
+                    ContentUnavailableView {
+                        Label("種目を追加してください", systemImage: "dumbbell")
+                    } description: {
+                        Text("種目またはテンプレートを選んでトレーニングを始めます。")
+                    } actions: {
+                        Button("種目を追加") { showingExercisePicker = true }
+                            .buttonStyle(.borderedProminent)
+                    }
                 }
             }
         }
     }
 
-    private var exerciseSelection: Binding<UUID?> {
+    private var entrySelection: Binding<UUID?> {
         Binding(
-            get: { store.draft.exerciseID },
+            get: { store.draft.selectedEntryID },
             set: { newValue in
                 guard let newValue else { return }
-                store.selectExercise(newValue)
+                store.selectWorkoutEntry(newValue)
             }
         )
     }
@@ -118,10 +175,21 @@ private struct SetEditorRow: View {
     @Binding var set: WorkoutSet
     let onDuplicate: () -> Void
     let onDelete: () -> Void
+    var onCompletionChange: ((Bool) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
+                Button {
+                    let newValue = !set.isCompleted
+                    set.isCompleted = newValue
+                    onCompletionChange?(newValue)
+                } label: {
+                    Image(systemName: set.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                        .foregroundStyle(set.isCompleted ? .green : .secondary)
+                }
+                .buttonStyle(.plain)
                 Text("Set \(number)").font(.headline)
                 Spacer()
                 Menu {
@@ -141,6 +209,109 @@ private struct SetEditorRow: View {
                 ForEach(SetKind.allCases) { kind in Text(kind.rawValue).tag(kind) }
             }
             .pickerStyle(.segmented)
+        }
+        .opacity(set.isCompleted ? 0.65 : 1)
+    }
+}
+
+private struct RestTimerBanner: View {
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let remaining = max(0, Int((store.draft.restEndsAt ?? context.date).timeIntervalSince(context.date)))
+            HStack(spacing: 16) {
+                Image(systemName: "timer")
+                VStack(alignment: .leading) {
+                    Text("休憩タイマー").font(.caption)
+                    Text(durationText(remaining)).font(.title3.monospacedDigit().bold())
+                }
+                Spacer()
+                Button("+30秒") { store.addRestTime(30) }
+                Button("終了") { store.stopRestTimer() }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+            .background(.regularMaterial)
+            .onChange(of: remaining) { _, value in
+                if value == 0 { store.stopRestTimer() }
+            }
+        }
+    }
+
+    private func durationText(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+private struct WorkoutExercisePicker: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        NavigationStack {
+            List(store.exercises) { exercise in
+                Button {
+                    store.addExerciseToWorkout(exercise.id)
+                    dismiss()
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(exercise.name)
+                            Text(exercise.muscleGroup.rawValue).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if store.draft.exercises.contains(where: { $0.exerciseID == exercise.id }) {
+                            Image(systemName: "checkmark").foregroundStyle(.green)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("種目を追加")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("閉じる") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct TemplatePickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        NavigationStack {
+            List(store.templates) { template in
+                Button {
+                    store.applyTemplate(template)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading) {
+                        Text(template.name)
+                        Text("\(template.exerciseIDs.count)種目")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .overlay {
+                if store.templates.isEmpty {
+                    ContentUnavailableView(
+                        "テンプレートがありません",
+                        systemImage: "list.clipboard",
+                        description: Text("「種目」タブで作成できます。")
+                    )
+                }
+            }
+            .navigationTitle("テンプレート")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("閉じる") { dismiss() }
+                }
+            }
         }
     }
 }
@@ -280,22 +451,43 @@ private struct ExerciseManagementView: View {
     @ObservedObject var store: AppStore
     @State private var editingExercise: Exercise?
     @State private var showingNewExercise = false
+    @State private var showingNewTemplate = false
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(store.exercises) { exercise in
-                    Button { editingExercise = exercise } label: {
-                        VStack(alignment: .leading) {
-                            Text(exercise.name).foregroundStyle(.primary)
-                            Text([exercise.muscleGroup.rawValue, exercise.equipment]
-                                .filter { !$0.isEmpty }.joined(separator: "・"))
-                                .font(.caption).foregroundStyle(.secondary)
+                Section("種目") {
+                    ForEach(store.exercises) { exercise in
+                        Button { editingExercise = exercise } label: {
+                            VStack(alignment: .leading) {
+                                Text(exercise.name).foregroundStyle(.primary)
+                                Text([exercise.muscleGroup.rawValue, exercise.equipment]
+                                    .filter { !$0.isEmpty }.joined(separator: "・"))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
+                    .onDelete(perform: store.deleteExercises)
+                    .onMove(perform: store.moveExercises)
                 }
-                .onDelete(perform: store.deleteExercises)
-                .onMove(perform: store.moveExercises)
+
+                Section("テンプレート") {
+                    ForEach(store.templates) { template in
+                        VStack(alignment: .leading) {
+                            Text(template.name)
+                            Text(template.exerciseIDs.compactMap { id in
+                                store.exercises.first { $0.id == id }?.name
+                            }.joined(separator: "・"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .onDelete(perform: store.deleteTemplates)
+
+                    Button("テンプレートを追加", systemImage: "plus") {
+                        showingNewTemplate = true
+                    }
+                }
             }
             .navigationTitle("種目")
             .toolbar {
@@ -309,12 +501,69 @@ private struct ExerciseManagementView: View {
                     store.addExercise(name: name, muscleGroup: group, equipment: equipment)
                 }
             }
+            .sheet(isPresented: $showingNewTemplate) {
+                TemplateEditView(store: store)
+            }
             .sheet(item: $editingExercise) { exercise in
                 ExerciseEditView(title: "種目を編集", exercise: exercise) { name, group, equipment in
                     store.updateExercise(Exercise(
                         id: exercise.id, name: name, muscleGroup: group, equipment: equipment
                     ))
                 }
+            }
+        }
+    }
+}
+
+private struct TemplateEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var store: AppStore
+    @State private var name = ""
+    @State private var selectedIDs: Set<UUID> = []
+    @State private var showError = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("テンプレート名") {
+                    TextField("例：Push Day", text: $name)
+                }
+                Section("種目") {
+                    ForEach(store.exercises) { exercise in
+                        Button {
+                            if selectedIDs.contains(exercise.id) { selectedIDs.remove(exercise.id) }
+                            else { selectedIDs.insert(exercise.id) }
+                        } label: {
+                            HStack {
+                                Text(exercise.name).foregroundStyle(.primary)
+                                Spacer()
+                                if selectedIDs.contains(exercise.id) {
+                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("テンプレートを作成")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        let orderedIDs = store.exercises.map(\.id).filter { selectedIDs.contains($0) }
+                        if store.addTemplate(name: name, exerciseIDs: orderedIDs) { dismiss() }
+                        else { showError = true }
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedIDs.isEmpty)
+                }
+            }
+            .alert("保存できません", isPresented: $showError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("同じ名前のテンプレートがすでにあります。")
             }
         }
     }
