@@ -1,18 +1,30 @@
 import SwiftUI
 
+private enum AppTab: Hashable {
+    case record
+    case history
+    case growth
+    case exercises
+}
+
 struct ContentView: View {
     @StateObject private var store = AppStore()
+    @State private var selectedTab: AppTab = .record
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             RecordView(store: store)
                 .tabItem { Label("記録", systemImage: "plus.circle") }
+                .tag(AppTab.record)
             HistoryView(store: store)
                 .tabItem { Label("履歴", systemImage: "clock") }
+                .tag(AppTab.history)
             GrowthView(store: store)
                 .tabItem { Label("成長", systemImage: "chart.xyaxis.line") }
+                .tag(AppTab.growth)
             ExerciseManagementView(store: store)
                 .tabItem { Label("種目", systemImage: "list.bullet") }
+                .tag(AppTab.exercises)
         }
     }
 }
@@ -247,9 +259,6 @@ private struct RestTimerBanner: View {
             .padding(.horizontal)
             .padding(.vertical, 10)
             .background(.regularMaterial)
-            .onChange(of: remaining) { _, value in
-                if value == 0 { store.stopRestTimer() }
-            }
         }
     }
 
@@ -345,34 +354,54 @@ private struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
                     WorkoutCalendarView(
                         records: store.records,
                         selectedDate: $selectedDate,
                         displayedMonth: $displayedMonth
                     )
-                }
+                    .padding()
+                    .background(.background, in: RoundedRectangle(cornerRadius: 16))
 
-                Section(selectedDate.formatted(date: .long, time: .omitted)) {
+                    Text(selectedDate.formatted(date: .long, time: .omitted))
+                        .font(.title3.bold())
+
                     if selectedRecords.isEmpty {
                         Text("この日の記録はありません")
                             .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 100)
+                            .background(.background, in: RoundedRectangle(cornerRadius: 16))
                     } else {
                         ForEach(selectedRecords) { record in
-                            Button { editingRecord = record } label: {
-                                RecordSummary(record: record)
-                            }
-                            .buttonStyle(.plain)
-                            .swipeActions {
-                                Button("削除", systemImage: "trash", role: .destructive) {
-                                    recordPendingDeletion = record
+                            HStack(alignment: .top, spacing: 12) {
+                                Button { editingRecord = record } label: {
+                                    RecordSummary(record: record)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .buttonStyle(.plain)
+
+                                Menu {
+                                    Button("編集", systemImage: "pencil") {
+                                        editingRecord = record
+                                    }
+                                    Button("削除", systemImage: "trash", role: .destructive) {
+                                        recordPendingDeletion = record
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                        .font(.title3)
+                                        .padding(.top, 4)
                                 }
                             }
+                            .padding()
+                            .background(.background, in: RoundedRectangle(cornerRadius: 16))
                         }
                     }
                 }
+                .padding()
             }
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("履歴")
             .onAppear {
                 if let latest = store.records.max(by: { $0.date < $1.date }),
