@@ -7,6 +7,7 @@ final class AppStore: ObservableObject {
     @Published var records: [WorkoutRecord] = [] { didSet { saveRecords() } }
     @Published var draft = WorkoutDraft() { didSet { saveDraft() } }
     @Published var templates: [WorkoutTemplate] = [] { didSet { saveTemplates() } }
+    @Published var personalBestMessage: String?
 
     private let defaults: UserDefaults
     private var isLoading = true
@@ -170,7 +171,12 @@ final class AppStore: ObservableObject {
             )
         }
         guard newRecords.count == draft.exercises.count else { return false }
+        let achievements = WorkoutAnalytics.personalBestMessages(
+            for: newRecords,
+            comparedWith: records
+        )
         records.append(contentsOf: newRecords)
+        personalBestMessage = achievements.isEmpty ? nil : achievements.joined(separator: "\n")
         draft = WorkoutDraft()
         return true
     }

@@ -9,6 +9,8 @@ struct ContentView: View {
                 .tabItem { Label("記録", systemImage: "plus.circle") }
             HistoryView(store: store)
                 .tabItem { Label("履歴", systemImage: "clock") }
+            GrowthView(store: store)
+                .tabItem { Label("成長", systemImage: "chart.xyaxis.line") }
             ExerciseManagementView(store: store)
                 .tabItem { Label("種目", systemImage: "list.bullet") }
         }
@@ -127,6 +129,11 @@ private struct RecordView: View {
             } message: {
                 Text("すべての種目に1回以上の有効なセットを入力してください。")
             }
+            .alert("自己ベスト更新！", isPresented: personalBestAlert) {
+                Button("OK") { store.personalBestMessage = nil }
+            } message: {
+                Text(store.personalBestMessage ?? "")
+            }
             .overlay {
                 if store.exercises.isEmpty {
                     ContentUnavailableView(
@@ -155,6 +162,13 @@ private struct RecordView: View {
                 guard let newValue else { return }
                 store.selectWorkoutEntry(newValue)
             }
+        )
+    }
+
+    private var personalBestAlert: Binding<Bool> {
+        Binding(
+            get: { store.personalBestMessage != nil },
+            set: { if !$0 { store.personalBestMessage = nil } }
         )
     }
 
@@ -320,34 +334,51 @@ private struct HistoryView: View {
     @ObservedObject var store: AppStore
     @State private var editingRecord: WorkoutRecord?
     @State private var recordPendingDeletion: WorkoutRecord?
+    @State private var selectedDate = Date()
+    @State private var displayedMonth = Date()
 
-    private var groupedRecords: [(date: Date, records: [WorkoutRecord])] {
-        Dictionary(grouping: store.records) { Calendar.current.startOfDay(for: $0.date) }
-            .map { ($0.key, $0.value.sorted { $0.date > $1.date }) }
+    private var selectedRecords: [WorkoutRecord] {
+        store.records
+            .filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
             .sorted { $0.date > $1.date }
     }
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(groupedRecords, id: \.date) { group in
-                    Section(group.date.formatted(date: .long, time: .omitted)) {
-                        ForEach(group.records) { record in
-                            Button { editingRecord = record } label: { RecordSummary(record: record) }
-                                .buttonStyle(.plain)
-                                .swipeActions {
-                                    Button("削除", systemImage: "trash", role: .destructive) {
-                                        recordPendingDeletion = record
-                                    }
+                Section {
+                    WorkoutCalendarView(
+                        records: store.records,
+                        selectedDate: $selectedDate,
+                        displayedMonth: $displayedMonth
+                    )
+                }
+
+                Section(selectedDate.formatted(date: .long, time: .omitted)) {
+                    if selectedRecords.isEmpty {
+                        Text("この日の記録はありません")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(selectedRecords) { record in
+                            Button { editingRecord = record } label: {
+                                RecordSummary(record: record)
+                            }
+                            .buttonStyle(.plain)
+                            .swipeActions {
+                                Button("削除", systemImage: "trash", role: .destructive) {
+                                    recordPendingDeletion = record
                                 }
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("履歴")
-            .overlay {
-                if store.records.isEmpty {
-                    ContentUnavailableView("記録がありません", systemImage: "clock")
+            .onAppear {
+                if let latest = store.records.max(by: { $0.date < $1.date }),
+                   !store.records.contains(where: { Calendar.current.isDateInToday($0.date) }) {
+                    selectedDate = latest.date
+                    displayedMonth = latest.date
                 }
             }
             .sheet(item: $editingRecord) { record in
