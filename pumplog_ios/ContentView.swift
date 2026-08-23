@@ -34,85 +34,32 @@ struct ContentView: View {
 }
 
 private struct RecordView: View {
+    private enum InputField: Hashable {
+        case weight
+        case reps
+    }
+
     @ObservedObject var store: AppStore
     @State private var weight = ""
     @State private var reps = ""
     @State private var showValidationError = false
     @State private var showingExercisePicker = false
     @State private var showingTemplatePicker = false
+    @FocusState private var focusedInput: InputField?
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("トレーニング") {
-                    DatePicker("日時", selection: $store.draft.date)
-                    if !store.draft.exercises.isEmpty {
-                        Picker("種目", selection: entrySelection) {
-                            ForEach(store.draft.exercises) { entry in
-                                Text(store.exercise(for: entry)?.name ?? "削除された種目")
-                                    .tag(Optional(entry.id))
-                            }
-                        }
-                    }
-                    HStack {
-                        Button("種目を追加", systemImage: "plus") { showingExercisePicker = true }
-                        Spacer()
-                        if store.selectedEntry != nil {
-                            Button("種目を外す", systemImage: "minus.circle", role: .destructive) {
-                                store.removeSelectedExercise()
-                            }
-                        }
-                    }
-                }
+            recordForm
+        }
+    }
 
-                if let entryIndex = store.selectedEntryIndex {
-                    Section("セットを追加") {
-                        HStack {
-                            TextField("重量 (kg)", text: $weight).keyboardType(.decimalPad)
-                            TextField("回数", text: $reps).keyboardType(.numberPad)
-                            Button("追加", action: addSet).buttonStyle(.borderedProminent)
-                        }
-                        if store.draft.exercises[entryIndex].sets.isEmpty {
-                            Text("重量と回数を入力してセットを追加してください")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    if !store.draft.exercises[entryIndex].sets.isEmpty {
-                        Section("セット") {
-                            ForEach(Array(store.draft.exercises[entryIndex].sets.indices), id: \.self) { index in
-                                SetEditorRow(
-                                    number: index + 1,
-                                    set: $store.draft.exercises[entryIndex].sets[index],
-                                    onDuplicate: { store.duplicateSet(at: index) },
-                                    onDelete: { store.draft.exercises[entryIndex].sets.remove(at: index) },
-                                    onCompletionChange: { store.setCompletion(at: index, isCompleted: $0) }
-                                )
-                            }
-                            Button("最後と同じセットを追加", systemImage: "plus.square.on.square") {
-                                store.duplicateLastSet()
-                            }
-                        }
-                    }
-
-                    Section("種目メモ") {
-                        TextField(
-                            "フォームや体調など",
-                            text: $store.draft.exercises[entryIndex].note,
-                            axis: .vertical
-                        )
-                        .lineLimit(2...5)
-                    }
-                }
-
-                Section {
-                    Button("トレーニングを完了") {
-                        showValidationError = !store.finishWorkout()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .disabled(store.draft.exercises.isEmpty)
-                }
-            }
+    private var recordForm: some View {
+        Form {
+            trainingSection
+            selectedExercisesSection
+            selectedEntrySections
+            completionSection
+        }
             .navigationTitle("PumpLog")
             .safeAreaInset(edge: .bottom) {
                 if store.draft.restEndsAt != nil {
@@ -169,16 +116,104 @@ private struct RecordView: View {
                 }
             }
         }
+
+    private var trainingSection: some View {
+        Section("トレーニング") {
+            DatePicker("日付", selection: $store.draft.date, displayedComponents: .date)
+                .environment(\.locale, Locale(identifier: "ja_JP"))
+            HStack {
+                Button("種目を追加", systemImage: "plus") { showingExercisePicker = true }
+                Spacer()
+                if store.selectedEntry != nil {
+                    Button("種目を外す", systemImage: "minus.circle", role: .destructive) {
+                        store.removeSelectedExercise()
+                    }
+                }
+            }
+        }
     }
 
-    private var entrySelection: Binding<UUID?> {
-        Binding(
-            get: { store.draft.selectedEntryID },
-            set: { newValue in
-                guard let newValue else { return }
-                store.selectWorkoutEntry(newValue)
+    @ViewBuilder
+    private var selectedExercisesSection: some View {
+        if !store.draft.exercises.isEmpty {
+            Section("追加済み種目") {
+                ForEach(store.draft.exercises) { entry in
+                    SelectedExerciseRow(
+                        name: store.exercise(for: entry)?.name ?? "削除された種目",
+                        isSelected: entry.id == store.draft.selectedEntryID,
+                        onSelect: { store.selectWorkoutEntry(entry.id) }
+                    )
+                }
             }
-        )
+        }
+    }
+
+    @ViewBuilder
+    private var selectedEntrySections: some View {
+        if let entryIndex = store.selectedEntryIndex {
+            Section("セットを追加") {
+                HStack {
+                    TextField("重量 (kg)", text: $weight)
+                        .keyboardType(.decimalPad)
+                        .focused($focusedInput, equals: .weight)
+                    TextField("回数", text: $reps)
+                        .keyboardType(.numberPad)
+                        .focused($focusedInput, equals: .reps)
+                    Button("追加", action: addSet).buttonStyle(.borderedProminent)
+                }
+                if store.draft.exercises[entryIndex].sets.isEmpty {
+                    Text("重量と回数を入力してセットを追加してください")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if !store.draft.exercises[entryIndex].sets.isEmpty {
+                Section("セット") {
+                    ForEach(Array(store.draft.exercises[entryIndex].sets.indices), id: \.self) { index in
+                        SetEditorRow(
+                            number: index + 1,
+                            set: $store.draft.exercises[entryIndex].sets[index],
+                            onDuplicate: { store.duplicateSet(at: index) },
+                            onDelete: { store.draft.exercises[entryIndex].sets.remove(at: index) }
+                        )
+                    }
+                    Button("最後と同じセットを追加", systemImage: "plus.square.on.square") {
+                        store.duplicateLastSet()
+                    }
+                }
+            }
+
+            Section("休憩タイマー") {
+                Picker("休憩時間", selection: $store.draft.restDuration) {
+                    ForEach([60, 90, 120, 180, 300], id: \.self) { seconds in
+                        Text(restDurationText(seconds)).tag(seconds)
+                    }
+                }
+                Button("休憩を開始", systemImage: "timer") {
+                    store.startRestTimer(seconds: store.draft.restDuration)
+                }
+                .disabled(store.draft.restEndsAt != nil)
+            }
+
+            Section("種目メモ") {
+                TextField(
+                    "フォームや体調など",
+                    text: $store.draft.exercises[entryIndex].note,
+                    axis: .vertical
+                )
+                .lineLimit(2...5)
+            }
+        }
+    }
+
+    private var completionSection: some View {
+        Section {
+            Button("トレーニングを完了") {
+                showValidationError = !store.finishWorkout()
+            }
+            .frame(maxWidth: .infinity)
+            .disabled(store.draft.exercises.isEmpty)
+        }
     }
 
     private var personalBestAlert: Binding<Bool> {
@@ -197,6 +232,29 @@ private struct RecordView: View {
         store.appendSet(weight: parsedWeight, reps: parsedReps)
         weight = ""
         reps = ""
+        focusedInput = nil
+    }
+
+    private func restDurationText(_ seconds: Int) -> String {
+        seconds >= 60 ? "\(seconds / 60)分" : "\(seconds)秒"
+    }
+}
+
+private struct SelectedExerciseRow: View {
+    let name: String
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack {
+                Text(name).foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: isSelected ? "circle.fill" : "circle")
+                    .font(.caption)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            }
+        }
     }
 }
 
@@ -205,21 +263,10 @@ private struct SetEditorRow: View {
     @Binding var set: WorkoutSet
     let onDuplicate: () -> Void
     let onDelete: () -> Void
-    var onCompletionChange: ((Bool) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Button {
-                    let newValue = !set.isCompleted
-                    set.isCompleted = newValue
-                    onCompletionChange?(newValue)
-                } label: {
-                    Image(systemName: set.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.title2)
-                        .foregroundStyle(set.isCompleted ? .green : .secondary)
-                }
-                .buttonStyle(.plain)
                 Text("Set \(number)").font(.headline)
                 Spacer()
                 Menu {
@@ -240,7 +287,6 @@ private struct SetEditorRow: View {
             }
             .pickerStyle(.segmented)
         }
-        .opacity(set.isCompleted ? 0.65 : 1)
     }
 }
 
@@ -274,6 +320,7 @@ private struct RestTimerBanner: View {
 private struct WorkoutExercisePicker: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var store: AppStore
+    @State private var showingNewExercise = false
 
     var body: some View {
         NavigationStack {
@@ -299,6 +346,21 @@ private struct WorkoutExercisePicker: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("閉じる") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("新しい種目", systemImage: "plus") {
+                        showingNewExercise = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showingNewExercise) {
+                ExerciseEditView(title: "種目を追加") { name, group, equipment, targets in
+                    store.addExercise(
+                        name: name,
+                        muscleGroup: group,
+                        equipment: equipment,
+                        targetMuscles: targets
+                    )
                 }
             }
         }
