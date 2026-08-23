@@ -343,12 +343,35 @@ private struct TemplatePickerView: View {
     }
 }
 
+private enum HistoryPeriod: String, CaseIterable, Identifiable {
+    case all = "全期間"
+    case last7Days = "過去7日"
+    case last30Days = "過去30日"
+    case last90Days = "過去90日"
+
+    var id: String { rawValue }
+
+    var days: Int? {
+        switch self {
+        case .all: nil
+        case .last7Days: 7
+        case .last30Days: 30
+        case .last90Days: 90
+        }
+    }
+}
+
 private struct HistoryView: View {
     @ObservedObject var store: AppStore
     @State private var editingRecord: WorkoutRecord?
     @State private var recordPendingDeletion: WorkoutRecord?
     @State private var selectedDate = Date()
     @State private var displayedMonth = Date()
+    @State private var searchText = ""
+    @State private var selectedMuscleGroup: MuscleGroup?
+    @State private var period: HistoryPeriod = .all
+
+    private let calendar = Calendar.current
 
     private var selectedRecords: [WorkoutRecord] {
         store.records
@@ -356,31 +379,49 @@ private struct HistoryView: View {
             .sorted { $0.date > $1.date }
     }
 
+    private var filteredRecords: [WorkoutRecord] {
+        store.records
+            .filter(matchesFilters)
+            .sorted { $0.date > $1.date }
+    }
+
+    private var displayRecords: [WorkoutRecord] {
+        hasActiveFilter ? filteredRecords : selectedRecords
+    }
+
+    private var hasActiveFilter: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || selectedMuscleGroup != nil
+            || period != .all
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     WorkoutCalendarView(
-                        records: store.records,
+                        records: hasActiveFilter ? filteredRecords : store.records,
                         selectedDate: $selectedDate,
                         displayedMonth: $displayedMonth
                     )
                     .padding()
                     .background(.background, in: RoundedRectangle(cornerRadius: 16))
 
-                    Text(selectedDate.formatted(date: .long, time: .omitted))
+                    Text(hasActiveFilter
+                         ? "検索結果（\(displayRecords.count)件）"
+                         : selectedDate.formatted(date: .long, time: .omitted))
                         .font(.title3.bold())
 
-                    if selectedRecords.isEmpty {
-                        Text("この日の記録はありません")
+                    if displayRecords.isEmpty {
+                        Text(hasActiveFilter ? "条件に一致する記録はありません" : "この日の記録はありません")
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, minHeight: 100)
                             .background(.background, in: RoundedRectangle(cornerRadius: 16))
                     } else {
-                        ForEach(selectedRecords) { record in
+                        ForEach(displayRecords) { record in
                             HStack(alignment: .top, spacing: 12) {
                                 Button { editingRecord = record } label: {
-                                    RecordSummary(record: record)
+                                    RecordSummary(record: record, showsDate: hasActiveFilter)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 .buttonStyle(.plain)
@@ -407,9 +448,34 @@ private struct HistoryView: View {
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("履歴")
+            .searchable(text: $searchText, prompt: "種目名・メモを検索")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("期間", selection: $period) {
+                            ForEach(HistoryPeriod.allCases) { item in
+                                Text(item.rawValue).tag(item)
+                            }
+                        }
+                        Picker("部位", selection: $selectedMuscleGroup) {
+                            Text("すべて").tag(Optional<MuscleGroup>.none)
+                            ForEach(MuscleGroup.allCases) { group in
+                                Text(group.rawValue).tag(Optional(group))
+                            }
+                        }
+                        Divider()
+                        Button("絞り込みをリセット", systemImage: "arrow.counterclockwise", action: resetFilters)
+                            .disabled(!hasActiveFilter)
+                    } label: {
+                        Label("絞り込み", systemImage: hasActiveFilter
+                              ? "line.3.horizontal.decrease.circle.fill"
+                              : "line.3.horizontal.decrease.circle")
+                    }
+                }
+            }
             .onAppear {
                 if let latest = store.records.max(by: { $0.date < $1.date }),
-                   !store.records.contains(where: { Calendar.current.isDateInToday($0.date) }) {
+                   !store.records.contains(where: { calendar.isDateInToday($0.date) }) {
                     selectedDate = latest.date
                     displayedMonth = latest.date
                 }
@@ -427,6 +493,41 @@ private struct HistoryView: View {
         }
     }
 
+    private func matchesFilters(_ record: WorkoutRecord) -> Bool {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            let matchesText = record.exerciseName.localizedCaseInsensitiveContains(query)
+                || record.note.localizedCaseInsensitiveContains(query)
+            guard matchesText else { return false }
+        }
+
+        if let selectedMuscleGroup,
+           muscleGroup(for: record) != selectedMuscleGroup {
+            return false
+        }
+
+        if let days = period.days,
+           let startDate = calendar.date(byAdding: .day, value: -(days - 1), to: calendar.startOfDay(for: Date())),
+           record.date < startDate {
+            return false
+        }
+        return true
+    }
+
+    private func muscleGroup(for record: WorkoutRecord) -> MuscleGroup {
+        if let exerciseID = record.exerciseID,
+           let exercise = store.exercises.first(where: { $0.id == exerciseID }) {
+            return exercise.muscleGroup
+        }
+        return store.exercises.first(where: { $0.name == record.exerciseName })?.muscleGroup ?? .fullBody
+    }
+
+    private func resetFilters() {
+        searchText = ""
+        selectedMuscleGroup = nil
+        period = .all
+    }
+
     private var deletionAlert: Binding<Bool> {
         Binding(
             get: { recordPendingDeletion != nil },
@@ -437,12 +538,18 @@ private struct HistoryView: View {
 
 private struct RecordSummary: View {
     let record: WorkoutRecord
+    var showsDate = false
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text(record.exerciseName).font(.headline)
                 Spacer()
                 Text(record.date, style: .time).foregroundStyle(.secondary)
+            }
+            if showsDate {
+                Text(record.date.formatted(date: .abbreviated, time: .omitted))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             ForEach(Array(record.sets.enumerated()), id: \.element.id) { index, set in
                 Text("Set \(index + 1)  \(set.weight.formatted()) kg × \(set.reps) 回")
