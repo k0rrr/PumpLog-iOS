@@ -4,6 +4,7 @@ private enum AppTab: Hashable {
     case record
     case history
     case growth
+    case body
     case exercises
 }
 
@@ -22,6 +23,9 @@ struct ContentView: View {
             GrowthView(store: store)
                 .tabItem { Label("成長", systemImage: "chart.xyaxis.line") }
                 .tag(AppTab.growth)
+            MuscleMapView(store: store)
+                .tabItem { Label("身体", systemImage: "figure.arms.open") }
+                .tag(AppTab.body)
             ExerciseManagementView(store: store)
                 .tabItem { Label("種目", systemImage: "list.bullet") }
                 .tag(AppTab.exercises)
