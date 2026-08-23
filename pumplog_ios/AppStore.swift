@@ -49,10 +49,20 @@ final class AppStore: ObservableObject {
         exercises.first { $0.id == entry.exerciseID }
     }
 
-    func addExercise(name: String, muscleGroup: MuscleGroup, equipment: String) -> Bool {
+    func addExercise(
+        name: String,
+        muscleGroup: MuscleGroup,
+        equipment: String,
+        targetMuscles: [MuscleRegion]
+    ) -> Bool {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty, !containsExercise(named: cleanName) else { return false }
-        exercises.append(Exercise(name: cleanName, muscleGroup: muscleGroup, equipment: equipment))
+        exercises.append(Exercise(
+            name: cleanName,
+            muscleGroup: muscleGroup,
+            equipment: equipment,
+            targetMuscles: targetMuscles
+        ))
         return true
     }
 

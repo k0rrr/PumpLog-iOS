@@ -10,6 +10,51 @@ enum MuscleGroup: String, Codable, CaseIterable, Identifiable {
     case fullBody = "全身"
 
     var id: String { rawValue }
+
+    var defaultRegions: [MuscleRegion] {
+        switch self {
+        case .chest: [.upperChest, .lowerChest]
+        case .back: [.trapezius, .lats, .lowerBack]
+        case .shoulders: [.frontDeltoids, .sideDeltoids, .rearDeltoids]
+        case .arms: [.biceps, .triceps, .forearms]
+        case .legs: [.quadriceps, .hamstrings, .glutes, .calves]
+        case .core: [.abs, .obliques]
+        case .fullBody: MuscleRegion.allCases
+        }
+    }
+}
+
+enum MuscleRegion: String, Codable, CaseIterable, Identifiable, Hashable {
+    case upperChest = "胸上部"
+    case lowerChest = "胸下部"
+    case trapezius = "僧帽筋"
+    case lats = "広背筋"
+    case lowerBack = "脊柱起立筋"
+    case frontDeltoids = "肩前部"
+    case sideDeltoids = "肩側部"
+    case rearDeltoids = "肩後部"
+    case biceps = "上腕二頭筋"
+    case triceps = "上腕三頭筋"
+    case forearms = "前腕"
+    case abs = "腹直筋"
+    case obliques = "腹斜筋"
+    case quadriceps = "大腿四頭筋"
+    case hamstrings = "ハムストリング"
+    case glutes = "臀筋"
+    case calves = "ふくらはぎ"
+
+    var id: String { rawValue }
+
+    var muscleGroup: MuscleGroup {
+        switch self {
+        case .upperChest, .lowerChest: .chest
+        case .trapezius, .lats, .lowerBack: .back
+        case .frontDeltoids, .sideDeltoids, .rearDeltoids: .shoulders
+        case .biceps, .triceps, .forearms: .arms
+        case .quadriceps, .hamstrings, .glutes, .calves: .legs
+        case .abs, .obliques: .core
+        }
+    }
 }
 
 struct Exercise: Identifiable, Codable, Equatable {
@@ -17,12 +62,66 @@ struct Exercise: Identifiable, Codable, Equatable {
     var name: String
     var muscleGroup: MuscleGroup
     var equipment: String
+    var targetMuscles: [MuscleRegion]
 
-    init(id: UUID = UUID(), name: String, muscleGroup: MuscleGroup = .fullBody, equipment: String = "") {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        muscleGroup: MuscleGroup = .fullBody,
+        equipment: String = "",
+        targetMuscles: [MuscleRegion]? = nil
+    ) {
         self.id = id
         self.name = name
         self.muscleGroup = muscleGroup
         self.equipment = equipment
+        self.targetMuscles = Self.normalizedTargets(
+            targetMuscles ?? Self.suggestedTargets(for: name, group: muscleGroup),
+            fallback: muscleGroup.defaultRegions
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, muscleGroup, equipment, targetMuscles
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try container.decode(String.self, forKey: .name)
+        muscleGroup = try container.decodeIfPresent(MuscleGroup.self, forKey: .muscleGroup) ?? .fullBody
+        equipment = try container.decodeIfPresent(String.self, forKey: .equipment) ?? ""
+        let storedTargets = try container.decodeIfPresent([MuscleRegion].self, forKey: .targetMuscles)
+        targetMuscles = Self.normalizedTargets(
+            storedTargets ?? Self.suggestedTargets(for: name, group: muscleGroup),
+            fallback: muscleGroup.defaultRegions
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(muscleGroup, forKey: .muscleGroup)
+        try container.encode(equipment, forKey: .equipment)
+        try container.encode(targetMuscles, forKey: .targetMuscles)
+    }
+
+    private static func normalizedTargets(
+        _ targets: [MuscleRegion],
+        fallback: [MuscleRegion]
+    ) -> [MuscleRegion] {
+        let source = targets.isEmpty ? fallback : targets
+        return MuscleRegion.allCases.filter { source.contains($0) }
+    }
+
+    private static func suggestedTargets(for name: String, group: MuscleGroup) -> [MuscleRegion] {
+        switch name {
+        case "ベンチプレス": [.upperChest, .lowerChest, .frontDeltoids, .triceps]
+        case "スクワット": [.quadriceps, .hamstrings, .glutes, .abs]
+        case "デッドリフト": [.trapezius, .lats, .lowerBack, .forearms, .hamstrings, .glutes]
+        default: group.defaultRegions
+        }
     }
 }
 

@@ -525,9 +525,9 @@ private struct ExerciseManagementView: View {
                         Button { editingExercise = exercise } label: {
                             VStack(alignment: .leading) {
                                 Text(exercise.name).foregroundStyle(.primary)
-                                Text([exercise.muscleGroup.rawValue, exercise.equipment]
+                                Text([exercise.targetMuscles.map(\.rawValue).joined(separator: "・"), exercise.equipment]
                                     .filter { !$0.isEmpty }.joined(separator: "・"))
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                             }
                         }
                     }
@@ -561,17 +561,26 @@ private struct ExerciseManagementView: View {
                 }
             }
             .sheet(isPresented: $showingNewExercise) {
-                ExerciseEditView(title: "種目を追加") { name, group, equipment in
-                    store.addExercise(name: name, muscleGroup: group, equipment: equipment)
+                ExerciseEditView(title: "種目を追加") { name, group, equipment, targets in
+                    store.addExercise(
+                        name: name,
+                        muscleGroup: group,
+                        equipment: equipment,
+                        targetMuscles: targets
+                    )
                 }
             }
             .sheet(isPresented: $showingNewTemplate) {
                 TemplateEditView(store: store)
             }
             .sheet(item: $editingExercise) { exercise in
-                ExerciseEditView(title: "種目を編集", exercise: exercise) { name, group, equipment in
+                ExerciseEditView(title: "種目を編集", exercise: exercise) { name, group, equipment, targets in
                     store.updateExercise(Exercise(
-                        id: exercise.id, name: name, muscleGroup: group, equipment: equipment
+                        id: exercise.id,
+                        name: name,
+                        muscleGroup: group,
+                        equipment: equipment,
+                        targetMuscles: targets
                     ))
                 }
             }
@@ -639,25 +648,60 @@ private struct ExerciseEditView: View {
     @State private var name: String
     @State private var muscleGroup: MuscleGroup
     @State private var equipment: String
+    @State private var targetMuscles: Set<MuscleRegion>
     @State private var showDuplicateError = false
-    let onSave: (String, MuscleGroup, String) -> Bool
+    let onSave: (String, MuscleGroup, String, [MuscleRegion]) -> Bool
 
-    init(title: String, exercise: Exercise? = nil, onSave: @escaping (String, MuscleGroup, String) -> Bool) {
+    init(
+        title: String,
+        exercise: Exercise? = nil,
+        onSave: @escaping (String, MuscleGroup, String, [MuscleRegion]) -> Bool
+    ) {
+        let initialGroup = exercise?.muscleGroup ?? .fullBody
         self.title = title
         _name = State(initialValue: exercise?.name ?? "")
-        _muscleGroup = State(initialValue: exercise?.muscleGroup ?? .fullBody)
+        _muscleGroup = State(initialValue: initialGroup)
         _equipment = State(initialValue: exercise?.equipment ?? "")
+        _targetMuscles = State(initialValue: Set(exercise?.targetMuscles ?? initialGroup.defaultRegions))
         self.onSave = onSave
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("種目名", text: $name)
-                Picker("部位", selection: $muscleGroup) {
-                    ForEach(MuscleGroup.allCases) { group in Text(group.rawValue).tag(group) }
+                Section("基本情報") {
+                    TextField("種目名", text: $name)
+                    Picker("分類", selection: $muscleGroup) {
+                        ForEach(MuscleGroup.allCases) { group in Text(group.rawValue).tag(group) }
+                    }
+                    TextField("器具（任意）", text: $equipment)
                 }
-                TextField("器具（任意）", text: $equipment)
+
+                Section {
+                    Text("実際に負荷がかかる筋肉を複数選択できます。身体マップには選択したすべての筋肉が反映されます。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                ForEach(MuscleGroup.allCases.filter { $0 != .fullBody }) { group in
+                    Section(group.rawValue) {
+                        ForEach(MuscleRegion.allCases.filter { $0.muscleGroup == group }) { region in
+                            Button { toggle(region) } label: {
+                                HStack {
+                                    Text(region.rawValue).foregroundStyle(.primary)
+                                    Spacer()
+                                    Image(systemName: targetMuscles.contains(region)
+                                          ? "checkmark.circle.fill"
+                                          : "circle")
+                                        .foregroundStyle(targetMuscles.contains(region) ? .red : .secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .onChange(of: muscleGroup) { _, newGroup in
+                targetMuscles = Set(newGroup.defaultRegions)
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -667,15 +711,21 @@ private struct ExerciseEditView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        if onSave(name, muscleGroup, equipment) { dismiss() }
+                        let orderedTargets = MuscleRegion.allCases.filter { targetMuscles.contains($0) }
+                        if onSave(name, muscleGroup, equipment, orderedTargets) { dismiss() }
                         else { showDuplicateError = true }
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || targetMuscles.isEmpty)
                 }
             }
             .alert("保存できません", isPresented: $showDuplicateError) {
                 Button("OK", role: .cancel) {}
             } message: { Text("同じ名前の種目がすでにあります。") }
         }
+    }
+
+    private func toggle(_ region: MuscleRegion) {
+        if targetMuscles.contains(region) { targetMuscles.remove(region) }
+        else { targetMuscles.insert(region) }
     }
 }

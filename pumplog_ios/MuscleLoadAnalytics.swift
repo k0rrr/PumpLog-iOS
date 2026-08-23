@@ -2,26 +2,22 @@ import Foundation
 
 struct MuscleLoadSnapshot {
     let date: Date
-    let loads: [MuscleGroup: Double]
+    let loads: [MuscleRegion: Double]
     let totalVolume: Double
     let workoutCount: Int
 
-    var activeGroups: [MuscleGroup] {
-        MuscleGroup.mapGroups.filter { load(for: $0) > 0 }
+    var activeRegions: [MuscleRegion] {
+        MuscleRegion.allCases.filter { load(for: $0) > 0 }
     }
 
-    func load(for group: MuscleGroup) -> Double {
-        loads[group, default: 0]
+    func load(for region: MuscleRegion) -> Double {
+        loads[region, default: 0]
     }
 
-    func intensity(for group: MuscleGroup) -> Double {
-        guard load(for: group) > 0 else { return 0 }
-        return min(1, sqrt(load(for: group) / 3_000))
+    func intensity(for region: MuscleRegion) -> Double {
+        guard load(for: region) > 0 else { return 0 }
+        return min(1, sqrt(load(for: region) / 3_000))
     }
-}
-
-extension MuscleGroup {
-    static let mapGroups: [MuscleGroup] = [.chest, .back, .shoulders, .arms, .legs, .core]
 }
 
 enum MuscleLoadAnalytics {
@@ -33,15 +29,14 @@ enum MuscleLoadAnalytics {
     ) -> MuscleLoadSnapshot {
         let dailyRecords = records.filter { calendar.isDate($0.date, inSameDayAs: date) }
         let exercisesByID = Dictionary(uniqueKeysWithValues: exercises.map { ($0.id, $0) })
-        var loads: [MuscleGroup: Double] = [:]
+        var loads: [MuscleRegion: Double] = [:]
 
         for record in dailyRecords {
-            let group = record.exerciseID.flatMap { exercisesByID[$0]?.muscleGroup }
-                ?? exercises.first(where: { $0.name == record.exerciseName })?.muscleGroup
-                ?? .fullBody
+            let exercise = record.exerciseID.flatMap { exercisesByID[$0] }
+                ?? exercises.first(where: { $0.name == record.exerciseName })
+            let targetRegions = exercise?.targetMuscles ?? MuscleRegion.allCases
             let load = trainingLoad(for: record)
-            let targetGroups = group == .fullBody ? MuscleGroup.mapGroups : [group]
-            for target in targetGroups {
+            for target in targetRegions {
                 loads[target, default: 0] += load
             }
         }

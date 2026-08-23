@@ -99,7 +99,7 @@ struct MuscleMapView: View {
             Divider().frame(height: 42)
             summaryItem(
                 title: "部位",
-                value: "\(snapshot.activeGroups.count)",
+                value: "\(snapshot.activeRegions.count)",
                 icon: "figure.arms.open"
             )
         }
@@ -111,7 +111,7 @@ struct MuscleMapView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("部位別の負荷").font(.title3.bold())
 
-            if snapshot.activeGroups.isEmpty {
+            if snapshot.activeRegions.isEmpty {
                 ContentUnavailableView(
                     "この日の記録はありません",
                     systemImage: "figure.strengthtraining.traditional",
@@ -119,17 +119,18 @@ struct MuscleMapView: View {
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {
-                ForEach(MuscleGroup.mapGroups) { group in
-                    let intensity = snapshot.intensity(for: group)
+                ForEach(MuscleRegion.allCases) { region in
+                    let intensity = snapshot.intensity(for: region)
                     HStack(spacing: 12) {
                         Circle()
                             .fill(regionColor(intensity: intensity))
                             .frame(width: 13, height: 13)
-                        Text(group.rawValue)
-                            .frame(width: 42, alignment: .leading)
+                        Text(region.rawValue)
+                            .font(.subheadline)
+                            .frame(width: 94, alignment: .leading)
                         ProgressView(value: intensity)
                             .tint(.red)
-                        Text(snapshot.load(for: group).formatted(.number.precision(.fractionLength(0))))
+                        Text(snapshot.load(for: region).formatted(.number.precision(.fractionLength(0))))
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
                             .frame(width: 52, alignment: .trailing)
@@ -196,8 +197,13 @@ private struct MuscleFigure: View {
             context.translateBy(x: xOffset, y: yOffset)
             context.scaleBy(x: scale, y: scale)
 
-            drawEllipse(CGRect(x: 82, y: 4, width: 46, height: 49), group: nil, in: &context)
-            drawRoundedRect(CGRect(x: 92, y: 48, width: 26, height: 24), radius: 8, group: torsoGroup, in: &context)
+            drawEllipse(CGRect(x: 82, y: 4, width: 46, height: 49), region: nil, in: &context)
+            drawRoundedRect(
+                CGRect(x: 92, y: 48, width: 26, height: 24),
+                radius: 8,
+                region: side == .front ? .frontDeltoids : .trapezius,
+                in: &context
+            )
 
             drawShoulders(in: &context)
             drawTorso(in: &context)
@@ -209,67 +215,80 @@ private struct MuscleFigure: View {
         .accessibilityValue(accessibilitySummary)
     }
 
-    private var torsoGroup: MuscleGroup { side == .front ? .chest : .back }
-
     private var accessibilitySummary: String {
-        let active = snapshot.activeGroups.map(\.rawValue).joined(separator: "、")
+        let active = snapshot.activeRegions.map(\.rawValue).joined(separator: "、")
         return active.isEmpty ? "負荷の記録なし" : "負荷のある部位：\(active)"
     }
 
     private func drawShoulders(in context: inout GraphicsContext) {
-        drawEllipse(CGRect(x: 52, y: 63, width: 43, height: 34), group: .shoulders, in: &context)
-        drawEllipse(CGRect(x: 115, y: 63, width: 43, height: 34), group: .shoulders, in: &context)
+        let mainRegion: MuscleRegion = side == .front ? .frontDeltoids : .rearDeltoids
+        drawEllipse(CGRect(x: 52, y: 64, width: 43, height: 34), region: mainRegion, in: &context)
+        drawEllipse(CGRect(x: 115, y: 64, width: 43, height: 34), region: mainRegion, in: &context)
+        drawEllipse(CGRect(x: 51, y: 69, width: 18, height: 25), region: .sideDeltoids, in: &context)
+        drawEllipse(CGRect(x: 141, y: 69, width: 18, height: 25), region: .sideDeltoids, in: &context)
     }
 
     private func drawTorso(in context: inout GraphicsContext) {
         if side == .front {
-            drawPath(points: [(76, 69), (105, 64), (105, 132), (67, 125)], group: .chest, in: &context)
-            drawPath(points: [(105, 64), (134, 69), (143, 125), (105, 132)], group: .chest, in: &context)
-            drawPath(points: [(67, 125), (105, 132), (105, 206), (78, 194)], group: .core, in: &context)
-            drawPath(points: [(105, 132), (143, 125), (132, 194), (105, 206)], group: .core, in: &context)
+            drawPath(points: [(76, 69), (105, 64), (105, 101), (70, 104)], region: .upperChest, in: &context)
+            drawPath(points: [(105, 64), (134, 69), (140, 104), (105, 101)], region: .upperChest, in: &context)
+            drawPath(points: [(70, 104), (105, 101), (105, 132), (67, 125)], region: .lowerChest, in: &context)
+            drawPath(points: [(105, 101), (140, 104), (143, 125), (105, 132)], region: .lowerChest, in: &context)
+            drawPath(points: [(79, 126), (105, 132), (105, 201), (87, 195)], region: .abs, in: &context)
+            drawPath(points: [(105, 132), (131, 126), (123, 195), (105, 201)], region: .abs, in: &context)
+            drawPath(points: [(67, 125), (79, 126), (87, 195), (78, 194)], region: .obliques, in: &context)
+            drawPath(points: [(131, 126), (143, 125), (132, 194), (123, 195)], region: .obliques, in: &context)
         } else {
-            drawPath(
-                points: [(76, 69), (105, 64), (134, 69), (143, 125), (132, 194), (105, 206), (78, 194), (67, 125)],
-                group: .back,
-                in: &context
-            )
+            drawPath(points: [(76, 69), (105, 64), (105, 127), (67, 105)], region: .trapezius, in: &context)
+            drawPath(points: [(105, 64), (134, 69), (143, 105), (105, 127)], region: .trapezius, in: &context)
+            drawPath(points: [(67, 105), (105, 127), (92, 177), (75, 185)], region: .lats, in: &context)
+            drawPath(points: [(105, 127), (143, 105), (135, 185), (118, 177)], region: .lats, in: &context)
+            drawPath(points: [(92, 177), (105, 127), (118, 177), (132, 194), (105, 206), (78, 194)], region: .lowerBack, in: &context)
         }
     }
 
     private func drawArms(in context: inout GraphicsContext) {
-        drawPath(points: [(57, 78), (77, 89), (58, 159), (40, 154)], group: .arms, in: &context)
-        drawPath(points: [(153, 78), (133, 89), (152, 159), (170, 154)], group: .arms, in: &context)
-        drawPath(points: [(40, 151), (58, 158), (45, 230), (29, 226)], group: .arms, in: &context)
-        drawPath(points: [(170, 151), (152, 158), (165, 230), (181, 226)], group: .arms, in: &context)
+        let upperArm: MuscleRegion = side == .front ? .biceps : .triceps
+        drawPath(points: [(57, 78), (77, 89), (58, 159), (40, 154)], region: upperArm, in: &context)
+        drawPath(points: [(153, 78), (133, 89), (152, 159), (170, 154)], region: upperArm, in: &context)
+        drawPath(points: [(40, 151), (58, 158), (45, 230), (29, 226)], region: .forearms, in: &context)
+        drawPath(points: [(170, 151), (152, 158), (165, 230), (181, 226)], region: .forearms, in: &context)
     }
 
     private func drawLegs(in context: inout GraphicsContext) {
-        drawPath(points: [(78, 193), (104, 203), (98, 283), (68, 283)], group: .legs, in: &context)
-        drawPath(points: [(106, 203), (132, 193), (142, 283), (112, 283)], group: .legs, in: &context)
-        drawPath(points: [(68, 280), (98, 280), (92, 354), (70, 354)], group: .legs, in: &context)
-        drawPath(points: [(112, 280), (142, 280), (140, 354), (118, 354)], group: .legs, in: &context)
+        if side == .front {
+            drawPath(points: [(78, 193), (104, 203), (98, 283), (68, 283)], region: .quadriceps, in: &context)
+            drawPath(points: [(106, 203), (132, 193), (142, 283), (112, 283)], region: .quadriceps, in: &context)
+        } else {
+            drawPath(points: [(78, 193), (104, 203), (101, 229), (73, 225)], region: .glutes, in: &context)
+            drawPath(points: [(106, 203), (132, 193), (137, 225), (109, 229)], region: .glutes, in: &context)
+            drawPath(points: [(73, 225), (101, 229), (98, 283), (68, 283)], region: .hamstrings, in: &context)
+            drawPath(points: [(109, 229), (137, 225), (142, 283), (112, 283)], region: .hamstrings, in: &context)
+        }
+        drawPath(points: [(68, 280), (98, 280), (92, 354), (70, 354)], region: .calves, in: &context)
+        drawPath(points: [(112, 280), (142, 280), (140, 354), (118, 354)], region: .calves, in: &context)
     }
 
     private func drawEllipse(
         _ rect: CGRect,
-        group: MuscleGroup?,
+        region: MuscleRegion?,
         in context: inout GraphicsContext
     ) {
-        draw(Path(ellipseIn: rect), group: group, in: &context)
+        draw(Path(ellipseIn: rect), region: region, in: &context)
     }
 
     private func drawRoundedRect(
         _ rect: CGRect,
         radius: CGFloat,
-        group: MuscleGroup?,
+        region: MuscleRegion?,
         in context: inout GraphicsContext
     ) {
-        draw(Path(roundedRect: rect, cornerRadius: radius), group: group, in: &context)
+        draw(Path(roundedRect: rect, cornerRadius: radius), region: region, in: &context)
     }
 
     private func drawPath(
         points: [(CGFloat, CGFloat)],
-        group: MuscleGroup,
+        region: MuscleRegion,
         in context: inout GraphicsContext
     ) {
         guard let first = points.first else { return }
@@ -279,15 +298,15 @@ private struct MuscleFigure: View {
             path.addLine(to: CGPoint(x: point.0, y: point.1))
         }
         path.closeSubpath()
-        draw(path, group: group, in: &context)
+        draw(path, region: region, in: &context)
     }
 
     private func draw(
         _ path: Path,
-        group: MuscleGroup?,
+        region: MuscleRegion?,
         in context: inout GraphicsContext
     ) {
-        let intensity = group.map(snapshot.intensity(for:)) ?? 0
+        let intensity = region.map(snapshot.intensity(for:)) ?? 0
         let fill = intensity == 0
             ? Color(uiColor: .tertiarySystemFill)
             : Color.red.opacity(0.2 + intensity * 0.75)
