@@ -4,6 +4,15 @@
 
 トレーニング中に、種目ごとのセットを最少操作で記録する。入力中の状態はアクティブ Workout として保存し、途中再開に対応する。
 
+![Workout画面](assets/workout.jpg)
+
+状態別リファレンス：
+
+- [前回記録なし](assets/workout-no-previous.jpg)
+- [重量 PR](assets/workout-weight-pr.jpg)
+- [回数 PR](assets/workout-rep-pr.jpg)
+- [操作後](assets/after-workout.jpg)
+
 ## 表示
 
 - Workout ヘッダーと現在の種目名

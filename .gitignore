@@ -16,3 +16,7 @@ xcuserdata/
 
 # Keep the app icon tracked even though QA screenshots are ignored.
 !pumplog_ios/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+
+# Keep curated screen references used by the public README.
+!docs/screens/assets/
+!docs/screens/assets/*.jpg

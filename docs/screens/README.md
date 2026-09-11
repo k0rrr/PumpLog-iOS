@@ -17,3 +17,5 @@ PumpLog の画面仕様を、画面ごとに確認できるように分割して
 | メニュー作成 | [menu-editor.md](menu-editor.md) |
 
 全体方針やモデル設計は、[要件定義書](../requirements.md) と [詳細設計書](../detailed-design.md) を参照してください。
+
+画面画像は [`assets/`](assets/) に保存しています。画像はFigmaの設計確認用キャプチャです。
