@@ -10,6 +10,8 @@
 - `Phase1Services.swift`: 初期データ、保存、前回記録などのサービス
 - `*ViewModel`: 画面の状態と操作（Workout、セット編集、結果など）
 
+画面ごとの目的・表示・操作仕様は [`docs/screens/`](screens/README.md) に分割して管理する。
+
 ## 変更時の目安
 
 1. 画面固有のUIと状態は対象画面のファイルに置く
