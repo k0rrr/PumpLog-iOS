@@ -16,7 +16,7 @@
 | 状態 | Phase 1（ローカル保存版） |
 
 ## 主な機能
-
+- [画面別ドキュメント一覧](docs/screens/README.md)
 ### Home
 
 - トレーニングを開始・再開する
@@ -304,9 +304,7 @@ CC BY-SA 4.0 の素材を改変・再配布する場合は、帰属、ライセ�
 
 ## 関連ドキュメント
 
-- [画面別ドキュメント一覧](docs/screens/README.md)
 - [要件定義書](docs/requirements.md)
 - [詳細設計書](docs/detailed-design.md)
 - [コード構成](docs/code-structure.md)
-- [Figma デザイン指示書](docs/figma-design-brief.md)
-- [Codex 向け詳細設計書](PumpLog_Codex詳細設計書.md)
+
