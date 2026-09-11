@@ -216,6 +216,7 @@ final class AppStore: ObservableObject {
     func applyTemplate(_ template: WorkoutTemplate) {
         draft = WorkoutDraft()
         for exerciseID in template.exerciseIDs { addExerciseToWorkout(exerciseID) }
+        draft.selectedEntryID = draft.exercises.first?.id
         draft.date = Date()
     }
 

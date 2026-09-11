@@ -1,6 +1,6 @@
 import SwiftUI
 
-private enum BodySide: String, CaseIterable, Identifiable {
+enum BodySide: String, CaseIterable, Identifiable {
     case front = "正面"
     case back = "背面"
 
@@ -8,19 +8,11 @@ private enum BodySide: String, CaseIterable, Identifiable {
 }
 
 struct MuscleMapView: View {
-    @ObservedObject var store: AppStore
-    @State private var selectedDate = Date()
+    @StateObject private var viewModel: MuscleMapViewModel
     @State private var side: BodySide = .front
-    @State private var didSelectInitialDate = false
 
-    private let calendar = Calendar.current
-
-    private var snapshot: MuscleLoadSnapshot {
-        MuscleLoadAnalytics.snapshot(
-            on: selectedDate,
-            records: store.records,
-            exercises: store.exercises
-        )
+    init(store: AppStore) {
+        _viewModel = StateObject(wrappedValue: MuscleMapViewModel(store: store))
     }
 
     var body: some View {
@@ -35,7 +27,7 @@ struct MuscleMapView: View {
                     .pickerStyle(.segmented)
 
                     VStack(spacing: 14) {
-                        MuscleFigure(side: side, snapshot: snapshot)
+                        MuscleFigure(side: side, snapshot: viewModel.snapshot)
                             .frame(height: 390)
 
                         HStack(spacing: 18) {
@@ -57,27 +49,27 @@ struct MuscleMapView: View {
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("身体")
-            .onAppear(perform: selectUsefulInitialDate)
+            .onAppear(perform: viewModel.selectUsefulInitialDate)
         }
     }
 
     private var dateCard: some View {
         HStack {
-            Button("前日", systemImage: "chevron.left") { moveDate(-1) }
+            Button("前日", systemImage: "chevron.left") { viewModel.moveDate(-1) }
                 .labelStyle(.iconOnly)
             Spacer()
             DatePicker(
                 "表示日",
-                selection: $selectedDate,
+                selection: $viewModel.selectedDate,
                 in: ...Date(),
                 displayedComponents: .date
             )
             .labelsHidden()
             .environment(\.locale, Locale(identifier: "ja_JP"))
             Spacer()
-            Button("翌日", systemImage: "chevron.right") { moveDate(1) }
+            Button("翌日", systemImage: "chevron.right") { viewModel.moveDate(1) }
                 .labelStyle(.iconOnly)
-                .disabled(calendar.isDateInToday(selectedDate))
+                .disabled(Calendar.current.isDateInToday(viewModel.selectedDate))
         }
         .padding()
         .background(.background, in: RoundedRectangle(cornerRadius: 16))
@@ -87,19 +79,19 @@ struct MuscleMapView: View {
         HStack(spacing: 12) {
             summaryItem(
                 title: "種目",
-                value: "\(snapshot.workoutCount)",
+                value: "\(viewModel.snapshot.workoutCount)",
                 icon: "dumbbell.fill"
             )
             Divider().frame(height: 42)
             summaryItem(
                 title: "総負荷量",
-                value: "\(snapshot.totalVolume.formatted(.number.notation(.compactName))) kg",
+                value: "\(viewModel.snapshot.totalVolume.formatted(.number.notation(.compactName))) kg",
                 icon: "sum"
             )
             Divider().frame(height: 42)
             summaryItem(
                 title: "部位",
-                value: "\(snapshot.activeRegions.count)",
+                value: "\(viewModel.snapshot.activeRegions.count)",
                 icon: "figure.arms.open"
             )
         }
@@ -111,7 +103,7 @@ struct MuscleMapView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("部位別の負荷").font(.title3.bold())
 
-            if snapshot.activeRegions.isEmpty {
+            if viewModel.snapshot.activeRegions.isEmpty {
                 ContentUnavailableView(
                     "この日の記録はありません",
                     systemImage: "figure.strengthtraining.traditional",
@@ -120,7 +112,7 @@ struct MuscleMapView: View {
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {
                 ForEach(MuscleRegion.allCases) { region in
-                    let intensity = snapshot.intensity(for: region)
+                    let intensity = viewModel.snapshot.intensity(for: region)
                     HStack(spacing: 12) {
                         Circle()
                             .fill(regionColor(intensity: intensity))
@@ -130,7 +122,7 @@ struct MuscleMapView: View {
                             .frame(width: 94, alignment: .leading)
                         ProgressView(value: intensity)
                             .tint(.red)
-                        Text(snapshot.load(for: region).formatted(.number.precision(.fractionLength(0))))
+                        Text(viewModel.snapshot.load(for: region).formatted(.number.precision(.fractionLength(0))))
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
                             .frame(width: 52, alignment: .trailing)
@@ -169,19 +161,6 @@ struct MuscleMapView: View {
             : Color.red.opacity(0.2 + intensity * 0.75)
     }
 
-    private func moveDate(_ amount: Int) {
-        guard let nextDate = calendar.date(byAdding: .day, value: amount, to: selectedDate),
-              nextDate <= Date() else { return }
-        selectedDate = nextDate
-    }
-
-    private func selectUsefulInitialDate() {
-        guard !didSelectInitialDate else { return }
-        didSelectInitialDate = true
-        guard !store.records.contains(where: { calendar.isDateInToday($0.date) }),
-              let latest = store.records.max(by: { $0.date < $1.date }) else { return }
-        selectedDate = latest.date
-    }
 }
 
 private struct MuscleFigure: View {

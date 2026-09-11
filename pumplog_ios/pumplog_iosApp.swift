@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct pumplog_iosApp: App {
@@ -13,5 +14,11 @@ struct pumplog_iosApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: [
+            Phase1Exercise.self,
+            Phase1Workout.self,
+            Phase1WorkoutExercise.self,
+            Phase1WorkoutSet.self
+        ])
     }
 }

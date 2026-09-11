@@ -1,60 +1,25 @@
 import Charts
 import SwiftUI
 
-private enum ProgressMetric: String, CaseIterable, Identifiable {
-    case maxWeight = "最大重量"
-    case estimatedOneRepMax = "推定1RM"
-    case volume = "総負荷量"
-
-    var id: String { rawValue }
-
-    var unit: String {
-        switch self {
-        case .volume: "kg"
-        case .maxWeight, .estimatedOneRepMax: "kg"
-        }
-    }
-
-    func value(for point: ExerciseProgressPoint) -> Double {
-        switch self {
-        case .maxWeight: point.maxWeight
-        case .estimatedOneRepMax: point.estimatedOneRepMax
-        case .volume: point.totalVolume
-        }
-    }
-}
-
 struct GrowthView: View {
-    @ObservedObject var store: AppStore
-    @State private var selectedExerciseID: UUID?
-    @State private var metric: ProgressMetric = .maxWeight
+    @StateObject private var viewModel: GrowthViewModel
 
-    private var selectedExercise: Exercise? {
-        store.exercises.first { $0.id == selectedExerciseID }
-    }
-
-    private var exerciseRecords: [WorkoutRecord] {
-        guard let selectedExerciseID else { return [] }
-        return WorkoutAnalytics.records(for: selectedExerciseID, in: store.records)
-    }
-
-    private var summary: PersonalBestSummary {
-        guard let selectedExerciseID else { return .empty }
-        return WorkoutAnalytics.summary(for: selectedExerciseID, in: store.records)
+    init(store: AppStore) {
+        _viewModel = StateObject(wrappedValue: GrowthViewModel(store: store))
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Picker("種目", selection: $selectedExerciseID) {
-                        ForEach(store.exercises) { exercise in
+                    Picker("種目", selection: $viewModel.selectedExerciseID) {
+                        ForEach(viewModel.store.exercises) { exercise in
                             Text(exercise.name).tag(Optional(exercise.id))
                         }
                     }
                     .pickerStyle(.menu)
 
-                    if exerciseRecords.isEmpty {
+                    if viewModel.exerciseRecords.isEmpty {
                         ContentUnavailableView(
                             "成長データがありません",
                             systemImage: "chart.xyaxis.line",
@@ -62,29 +27,29 @@ struct GrowthView: View {
                         )
                         .frame(maxWidth: .infinity, minHeight: 320)
                     } else {
-                        PersonalBestGrid(summary: summary)
+                        PersonalBestGrid(summary: viewModel.summary)
 
                         VStack(alignment: .leading, spacing: 12) {
                             Text("推移").font(.title2.bold())
-                            Picker("指標", selection: $metric) {
+                            Picker("指標", selection: $viewModel.metric) {
                                 ForEach(ProgressMetric.allCases) { item in
                                     Text(item.rawValue).tag(item)
                                 }
                             }
                             .pickerStyle(.segmented)
 
-                            Chart(exerciseRecords.map(\.progressPoint)) { point in
+                            Chart(viewModel.exerciseRecords.map(\.progressPoint)) { point in
                                 LineMark(
                                     x: .value("日付", point.date),
-                                    y: .value(metric.rawValue, metric.value(for: point))
+                                    y: .value(viewModel.metric.rawValue, viewModel.metric.value(for: point))
                                 )
                                 .interpolationMethod(.catmullRom)
                                 PointMark(
                                     x: .value("日付", point.date),
-                                    y: .value(metric.rawValue, metric.value(for: point))
+                                    y: .value(viewModel.metric.rawValue, viewModel.metric.value(for: point))
                                 )
                             }
-                            .chartYAxisLabel(metric.unit)
+                            .chartYAxisLabel(viewModel.metric.unit)
                             .frame(height: 240)
                         }
                         .padding()
@@ -92,7 +57,7 @@ struct GrowthView: View {
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("種目履歴").font(.title2.bold())
-                            ForEach(exerciseRecords.reversed()) { record in
+                            ForEach(viewModel.exerciseRecords.reversed()) { record in
                                 NavigationLink {
                                     ProgressRecordDetail(record: record)
                                 } label: {
@@ -116,11 +81,7 @@ struct GrowthView: View {
             }
             .navigationTitle("成長")
             .onAppear {
-                if selectedExerciseID == nil {
-                    selectedExerciseID = store.exercises.first(where: { exercise in
-                        store.records.contains { $0.exerciseID == exercise.id }
-                    })?.id ?? store.exercises.first?.id
-                }
+                viewModel.selectInitialExerciseIfNeeded()
             }
         }
     }

@@ -1,0 +1,95 @@
+:root {
+    color-scheme: dark;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    background: transparent;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #viewer {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 13px;
+    transition: opacity 220ms ease;
+    pointer-events: none;
+}
+
+#loading.hidden {
+    opacity: 0;
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #ff3b30;
+    border-radius: 50%;
+    animation: spin 900ms linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#reset {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 18px;
+    color: rgba(255, 255, 255, 0.78);
+    background: rgba(25, 26, 29, 0.82);
+    font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif;
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+#reset.ready { opacity: 1; }
+
+#muscle-name {
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%) translateY(8px);
+    max-width: calc(100% - 32px);
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    color: rgba(255, 255, 255, 0.88);
+    background: rgba(25, 26, 29, 0.88);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transition: opacity 180ms ease, transform 180ms ease;
+    pointer-events: none;
+}
+
+#muscle-name.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}

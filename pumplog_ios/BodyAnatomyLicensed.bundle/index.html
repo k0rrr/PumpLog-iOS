@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>PumpLog Body Status</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "./libs/three.module.js",
+            "three/addons/": "./libs/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <main id="viewer" aria-label="3D人体モデル"></main>
+    <div id="loading" role="status">
+        <div class="spinner"></div>
+        <span>人体モデルを読み込み中</span>
+    </div>
+    <div id="muscle-name" aria-live="polite"></div>
+    <button id="reset" type="button" aria-label="人体モデルを正面に戻す">正面に戻す</button>
+    <script type="module">
+        import("./viewer.js").catch((error) => {
+            const status = document.querySelector("#loading span");
+            if (status) status.textContent = "人体モデルを読み込めませんでした";
+        });
+    </script>
+</body>
+</html>

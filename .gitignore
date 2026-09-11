@@ -1,0 +1,18 @@
+# Xcode build products and local derived data
+build/
+build-*/
+DerivedData/
+__pycache__/
+
+# Per-user Xcode state
+xcuserdata/
+*.xcuserstate
+
+# Local QA captures and generated artifacts
+*.xcresult
+*.png
+*.jpg
+*.jpeg
+
+# Keep the app icon tracked even though QA screenshots are ignored.
+!pumplog_ios/Assets.xcassets/AppIcon.appiconset/AppIcon.png
