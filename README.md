@@ -288,6 +288,8 @@ docs/
 
 Body タブの 3D モデルは `BodyAnatomyLicensed.bundle` に同梱しています。モデル本体と関連アセットには出典ごとのライセンス条件があるため、配布時は必ず同梱 notices とライセンス本文を確認してください。
 
+出典・改変内容・配布時の確認事項は、[3D人体モデルのライセンス説明](docs/3d-model-license.md)にまとめています。
+
 現在のアプリには次の情報を Setting 内と bundle 内 notices に記載しています。
 
 - Body Anatomy 3D Viewer（hpfrei）および Z-Anatomy contributors への帰属
