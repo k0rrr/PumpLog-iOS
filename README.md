@@ -72,24 +72,27 @@
 
 ## 画面スクリーンショット
 
-現在リポジトリに保存している Figma の画面リファレンスです。画像は設計確認用のキャプチャで、実機表示とはステータスバーやデータ内容が異なる場合があります。
+シミュレーターで起動した、現在の実装画面のスクリーンショットです。ステータスバーの時刻や表示データは撮影時点のサンプルです。
 
 <table>
 <tr>
-<td><img src="docs/screens/assets/home.jpg" alt="Home" width="220"><br>Home</td>
-<td><img src="docs/screens/assets/muscle-selection.jpg" alt="部位選択" width="220"><br>部位選択</td>
-<td><img src="docs/screens/assets/today-training.jpg" alt="今日のトレーニング" width="220"><br>今日のトレーニング</td>
-<td><img src="docs/screens/assets/workout.jpg" alt="Workout" width="220"><br>Workout</td>
+<td><img src="docs/screens/assets/actual-home.jpg" alt="Home" width="220"><br>Home</td>
+<td><img src="docs/screens/assets/actual-muscle.jpg" alt="部位選択" width="220"><br>部位選択</td>
+<td><img src="docs/screens/assets/actual-setup.jpg" alt="今日のトレーニング" width="220"><br>今日のトレーニング</td>
 </tr>
 <tr>
-<td><img src="docs/screens/assets/rest-timer.jpg" alt="休憩タイマー" width="220"><br>休憩タイマー</td>
-<td><img src="docs/screens/assets/result.jpg" alt="Result" width="220"><br>Result</td>
-<td><img src="docs/screens/assets/history.jpg" alt="History" width="220"><br>History</td>
-<td><img src="docs/screens/assets/history-detail.jpg" alt="History詳細" width="220"><br>History詳細</td>
+<td><img src="docs/screens/assets/actual-workout.jpg" alt="Workout" width="220"><br>Workout</td>
+<td><img src="docs/screens/assets/actual-rest.jpg" alt="休憩タイマー" width="220"><br>休憩タイマー</td>
+<td><img src="docs/screens/assets/actual-result.jpg" alt="Result" width="220"><br>Result</td>
+</tr>
+<tr>
+<td><img src="docs/screens/assets/actual-history.jpg" alt="History" width="220"><br>History</td>
+<td><img src="docs/screens/assets/actual-body.jpg" alt="Body" width="220"><br>Body</td>
+<td><img src="docs/screens/assets/actual-setting.jpg" alt="Setting" width="220"><br>Setting</td>
 </tr>
 </table>
 
-Workout の状態別リファレンス（前回記録なし、重量 PR、回数 PR、操作後）は [Workout の画面別ドキュメント](docs/screens/workout.md) にまとめています。Body、Setting、メニュー作成は、対応する画面の実機キャプチャを取得した時点で追加します。
+各画面の目的、操作方法、保存ルールは [画面別ドキュメント](docs/screens/README.md) にまとめています。
 
 ## 画面と遷移
 
@@ -307,4 +310,3 @@ CC BY-SA 4.0 の素材を改変・再配布する場合は、帰属、ライセ�
 - [要件定義書](docs/requirements.md)
 - [詳細設計書](docs/detailed-design.md)
 - [コード構成](docs/code-structure.md)
-

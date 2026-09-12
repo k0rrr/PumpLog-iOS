@@ -4,6 +4,8 @@
 
 トレーニング履歴を部位別に集計し、今日・今週・今月の負荷を視覚的に確認する。
 
+![Body画面](assets/actual-body.jpg)
+
 ## 表示
 
 - 共通ヘッダー「Body Status」

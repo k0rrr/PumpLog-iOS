@@ -4,7 +4,7 @@
 
 今回のトレーニングで鍛える部位を選び、次の種目選択画面へ渡す。
 
-![部位選択画面](assets/muscle-selection.jpg)
+![部位選択画面](assets/actual-muscle.jpg)
 
 ## 表示
 

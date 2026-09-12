@@ -4,7 +4,9 @@
 
 1回分の完了済みトレーニングを確認し、記録日や各セットを修正する。
 
-![History詳細画面](assets/history-detail.jpg)
+![History詳細画面](assets/actual-history.jpg)
+
+履歴一覧から記録行をタップすると、セット編集・削除を行う詳細画面へ遷移します。
 
 ## 表示
 

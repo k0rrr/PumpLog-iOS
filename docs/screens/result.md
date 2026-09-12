@@ -4,7 +4,7 @@
 
 完了したトレーニングの概要と自己ベストを確認し、Home または履歴へ戻る。
 
-![Result画面](assets/result.jpg)
+![Result画面](assets/actual-result.jpg)
 
 ## 表示
 
