@@ -4,7 +4,7 @@
 
 トレーニング中に、種目ごとのセットを最少操作で記録する。入力中の状態はアクティブ Workout として保存し、途中再開に対応する。
 
-![Workout画面](assets/actual-workout.jpg)
+<img src="assets/actual-workout.jpg" alt="Workout画面" width="300">
 
 状態別の挙動は、実装画面を操作して確認できます。上のキャプチャは記録入力中の状態です。
 

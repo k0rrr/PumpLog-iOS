@@ -4,7 +4,7 @@
 
 過去のトレーニングをカレンダーと検索で見つけ、詳細確認・編集・削除を行う。
 
-![History画面](assets/actual-history.jpg)
+<img src="assets/actual-history.jpg" alt="History画面" width="300">
 
 ## 表示
 

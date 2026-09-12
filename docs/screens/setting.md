@@ -4,7 +4,7 @@
 
 トレーニング中の補助設定と、アプリ・3Dモデルに関する情報を確認する。
 
-![Setting画面](assets/actual-setting.jpg)
+<img src="assets/actual-setting.jpg" alt="Setting画面" width="300">
 
 ## 表示と操作
 

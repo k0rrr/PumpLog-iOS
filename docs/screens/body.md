@@ -4,7 +4,7 @@
 
 トレーニング履歴を部位別に集計し、今日・今週・今月の負荷を視覚的に確認する。
 
-![Body画面](assets/actual-body.jpg)
+<img src="assets/actual-body.jpg" alt="Body画面" width="300">
 
 ## 表示
 

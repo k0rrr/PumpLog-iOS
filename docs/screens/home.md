@@ -4,7 +4,7 @@
 
 アプリ起動後の入口。トレーニング開始、進行中トレーニングの再開、保存済みメニューの利用、最近の記録の確認を一つの画面で行う。
 
-![Home画面](assets/actual-home.jpg)
+<img src="assets/actual-home.jpg" alt="Home画面" width="300">
 
 ## 表示
 

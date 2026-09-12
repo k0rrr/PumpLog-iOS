@@ -4,7 +4,7 @@
 
 選択した部位に属する種目を確認し、Workout で記録する種目構成を確定する。
 
-![今日のトレーニング画面](assets/actual-setup.jpg)
+<img src="assets/actual-setup.jpg" alt="今日のトレーニング画面" width="300">
 
 ## 表示
 
